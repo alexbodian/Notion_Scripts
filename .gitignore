@@ -1,0 +1,127 @@
+# Python .gitignore — common patterns
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Misc
+*.log
+*.tmp
+*.bak
+
+# Ignore PDFs and any directories named "captures"
+*.pdf
+**/captures/
+captures/
+
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Translations
+*.mo
+*.pot
+
+# Django, Flask, databases
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+instance/
+.webassets-cache
+
+# Sphinx documentation
+docs/_build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+venv*/
+env.bak/
+venv.bak/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.iml
+
+# Python tooling
+.python-version
+Pipfile.lock
+poetry.lock
+__pypackages__/
+
+# dotenv / environment files
+.env
+.env.*
+
+# Caches and caches for linters/type-checkers
+.mypy_cache/
+.pytest_cache/
+.cache
+
+# Jupyter
+.ipynb_checkpoints
+
+# Project-specific/secret files
+secrets.*
+credentials.*
+*.key
+*.pem
+*.p12
+*.pfx
+.notionscripts.cache
+notion_token.json
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Misc
+*.log
+*.tmp
+*.bak
