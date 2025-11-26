@@ -88,7 +88,7 @@ def capture_fullpage_screenshot(url: str, out_dir: str = "captures"):
 
         # Load page and wait for network to settle
         page.goto(url, wait_until="networkidle", timeout=60_000)
-        page.wait_for_timeout(2000)
+        # page.wait_for_timeout(2000)
 
         # Full-page screenshot
         page.screenshot(path=png_path, full_page=True)

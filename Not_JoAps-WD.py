@@ -88,7 +88,7 @@ def capture_fullpage_screenshot(url: str, out_dir: str = "captures"):
         page = browser.new_page(viewport={"width": 1280, "height": 720})
 
         page.goto(url, wait_until="networkidle", timeout=60_000)
-        page.wait_for_timeout(2000)
+        # page.wait_for_timeout(2000)
 
         page.screenshot(path=png_path, full_page=True)
         html = page.content()
