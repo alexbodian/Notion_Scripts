@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Save Job to Notion",
+  "version": "1.1.0",
+  "description": "Capture a job listing and create a Notion page with title, company, URL, and full-page PDF screenshot.",
+  "permissions": ["tabs", "activeTab", "scripting", "storage"],
+  "host_permissions": ["https://api.notion.com/*", "<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Save job to Notion",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html"
+}

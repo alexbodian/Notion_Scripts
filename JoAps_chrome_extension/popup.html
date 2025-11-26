@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Save Job to Notion</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        margin: 10px;
+        width: 320px;
+        box-sizing: border-box;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 8px;
+      }
+      .step {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .step-header {
+        display: flex;
+        align-items: center;
+        padding: 6px 8px;
+        background: #f5f5f5;
+        cursor: pointer;
+      }
+      .step-header span.step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #555;
+        color: #fff;
+        font-size: 11px;
+        margin-right: 6px;
+      }
+      .step-header span.step-title {
+        font-size: 13px;
+        font-weight: 600;
+        flex: 1;
+      }
+      .step-header span.chevron {
+        font-size: 11px;
+        transform: rotate(0deg);
+        transition: transform 0.2s ease;
+      }
+      .step-header.collapsed span.chevron {
+        transform: rotate(-90deg);
+      }
+      .step-body {
+        padding: 8px;
+        display: none;
+      }
+      .step-body.active {
+        display: block;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        margin-top: 6px;
+        margin-bottom: 2px;
+      }
+      input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 4px 6px;
+        font-size: 12px;
+      }
+      .buttons {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10px;
+        gap: 6px;
+      }
+      button {
+        font-size: 12px;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      #status {
+        font-size: 11px;
+        color: #555;
+        margin-top: 4px;
+        min-height: 14px;
+      }
+      #status.error {
+        color: #b00020;
+      }
+      #status.success {
+        color: #0b8043;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Save Job to Notion</h1>
+
+    <!-- Step 1: Job info -->
+    <div class="step" id="step1">
+      <div class="step-header" data-target="step1-body">
+        <span class="step-number">1</span>
+        <span class="step-title">Review job info</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="step-body active" id="step1-body">
+        <div id="loadingMessage">Detecting job info from this page...</div>
+        <div id="jobForm" style="display: none">
+          <label for="jobTitle">Job Title</label>
+          <input type="text" id="jobTitle" />
+
+          <label for="company">Company</label>
+          <input type="text" id="company" />
+
+          <div class="buttons">
+            <button id="refreshBtn" type="button">Refresh</button>
+            <button id="nextBtn" type="button">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Save -->
+    <div class="step" id="step2">
+      <div class="step-header collapsed" data-target="step2-body">
+        <span class="step-number">2</span>
+        <span class="step-title">Save to Notion</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="step-body" id="step2-body">
+        <p style="font-size: 12px; margin: 0 0 8px">
+          Click <strong>Save to Notion</strong> to capture a full-page PDF and
+          create the Notion item.
+        </p>
+        <div class="buttons">
+          <button id="saveBtn" type="button">Save to Notion</button>
+        </div>
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
