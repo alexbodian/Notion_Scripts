@@ -1,3 +1,5 @@
+# Not_JoAps-WD.py
+
 import argparse
 import json
 import os
@@ -35,6 +37,11 @@ BASE_HEADERS = {
     "Notion-Version": NOTION_VERSION,
     "accept": "application/json",
 }
+
+# Groq (optional) – for generating Company Description
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 # -------------------------------------------------
@@ -88,7 +95,6 @@ def capture_fullpage_screenshot(url: str, out_dir: str = "captures"):
         page = browser.new_page(viewport={"width": 1280, "height": 720})
 
         page.goto(url, wait_until="networkidle", timeout=60_000)
-        # page.wait_for_timeout(2000)
 
         page.screenshot(path=png_path, full_page=True)
         html = page.content()
@@ -202,7 +208,7 @@ def extract_job_info_from_html(html: str, url: str):
     # --- 2) Workday host → brand for company (manulife, leidos, etc.) ---
     if is_workday:
         host = hostname.replace("www.", "")
-        brand = host.split(".")[0]  # "manulife" in "manulife.wd3.myworkdayjobs.com"
+        brand = host.split(".")[0]
         if brand:
             brand = brand.replace("-", " ")
             brand = " ".join(w.capitalize() for w in brand.split())
@@ -216,7 +222,6 @@ def extract_job_info_from_html(html: str, url: str):
     elif soup.title and soup.title.string:
         title_text = soup.title.string.strip()
 
-    # Job title: try <h1> then common class patterns, then title heuristics
     if not job_title:
         h1 = soup.find("h1")
         if h1 and h1.get_text(strip=True):
@@ -244,7 +249,6 @@ def extract_job_info_from_html(html: str, url: str):
             temp = temp.split("|", 1)[0]
         job_title = temp.strip()
 
-    # Company: if still none, use og:site_name / schema / title patterns / hostname
     if not company:
         og_site_name = soup.find("meta", property="og:site_name")
         if og_site_name and og_site_name.get("content"):
@@ -290,7 +294,83 @@ def extract_job_info_from_html(html: str, url: str):
 
 
 # -------------------------------------------------
-# 3. Notion helpers
+# 3. Company description via Groq (optional)
+# -------------------------------------------------
+def generate_company_description(
+    company: str, job_title: Optional[str], url: str
+) -> Optional[str]:
+    """
+    Use Groq (free-tier LLM) to generate a short 1–2 sentence description
+    of what this company does.
+
+    If GROQ_API_KEY is not set or something fails, returns None.
+    """
+    if not GROQ_API_KEY or not company:
+        return None
+
+    system_msg = (
+        "You help a user maintain a personal job applications tracker.\n"
+        "You write short, neutral, factual-sounding descriptions of companies.\n"
+        "If you cannot confidently identify the company from its name alone, "
+        "you must say something generic like:\n"
+        "'A business or organization named <name>; specific public details are not readily available.'\n"
+        "Do NOT invent specific details such as revenue, exact employee counts, or specific product names.\n"
+    )
+
+    user_msg = (
+        f"Company name: {company}\n"
+        f"Job title: {job_title or ''}\n"
+        f"Listing URL: {url}\n\n"
+        "Write a concise 1–2 sentence description of what this company does.\n"
+        "Return only the description text, no bullet points or extra commentary."
+    )
+
+    body = {
+        "model": GROQ_MODEL,
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
+        ],
+        "temperature": 0.3,
+        "max_tokens": 256,
+    }
+
+    try:
+        resp = requests.post(
+            GROQ_API_URL,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=20,
+        )
+    except requests.RequestException as e:
+        print(f"   ❌ Groq request error: {e}")
+        return None
+
+    if not resp.ok:
+        print(f"   ❌ Groq API error {resp.status_code}: {resp.text}")
+        return None
+
+    data = resp.json()
+    choices = data.get("choices") or []
+    if not choices:
+        print("   ❌ Groq response has no choices.")
+        return None
+
+    desc = (choices[0].get("message", {}).get("content") or "").strip()
+    if not desc:
+        return None
+
+    if len(desc) > 500:
+        desc = desc[:500].rsplit(" ", 1)[0].rstrip() + "…"
+
+    return desc
+
+
+# -------------------------------------------------
+# 4. Notion helpers
 # -------------------------------------------------
 def get_database_properties() -> Dict[str, Any]:
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
@@ -371,6 +451,7 @@ def create_notion_page(
     pdf_upload_id: Optional[str],
     pdf_name: Optional[str],
     db_properties: Dict[str, Any],
+    company_description: Optional[str] = None,
 ):
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         raise RuntimeError("NOTION_TOKEN and NOTION_DATABASE_ID must be set in .env")
@@ -402,6 +483,7 @@ def create_notion_page(
         },
     }
 
+    # Attach PDF if files property is configured and valid
     if FILES_PROPERTY_NAME and pdf_upload_id:
         prop = db_properties.get(FILES_PROPERTY_NAME)
         if prop and prop.get("type") == "files":
@@ -420,6 +502,26 @@ def create_notion_page(
             print(
                 f"⚠️ Not attaching PDF: property '{FILES_PROPERTY_NAME}' "
                 f"not found or not type 'files' in this database."
+            )
+
+    # Attach Company Description if property exists and we have text
+    if company_description:
+        cd_prop = db_properties.get("Company Description")
+        if cd_prop and cd_prop.get("type") == "rich_text":
+            print("   → Writing Company Description to 'Company Description' property")
+            properties["Company Description"] = {
+                "type": "rich_text",
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {"content": company_description},
+                    }
+                ],
+            }
+        else:
+            print(
+                "⚠️ Company Description text generated, but database has no "
+                "'Company Description' rich_text property. Skipping that field."
             )
 
     payload = {
@@ -462,6 +564,10 @@ def main():
     print(f"🔗 Processing URL: {url}")
     print(f"📁 Using Notion database: {NOTION_DATABASE_ID}")
     print(f"📎 Files property configured as: {FILES_PROPERTY_NAME!r}")
+    if GROQ_API_KEY:
+        print("💬 Groq API key detected – will attempt to generate Company Description.")
+    else:
+        print("ℹ️ No GROQ_API_KEY set – skipping Company Description generation.")
 
     png_path = None
     pdf_path = None
@@ -490,6 +596,21 @@ def main():
         print(f"\n✅ Final Job Title: {job_title}")
         print(f"✅ Final Company:   {company}\n")
 
+        # 2.5) Generate company description (optional)
+        company_description: Optional[str] = None
+        if GROQ_API_KEY:
+            print("🧠 Generating company description via Groq...")
+            company_description = generate_company_description(
+                company, job_title, url
+            )
+            if company_description:
+                print("   → Company Description generated:")
+                print("      " + company_description.replace("\n", "\n      "))
+            else:
+                print("   ⚠️ Groq did not return a description.")
+        else:
+            print("ℹ️ Skipping company description because GROQ_API_KEY is not set.")
+
         # 3) PDF
         today_str = datetime.now().strftime("%Y-%m-%d")
         safe_company = sanitize_for_filename(company)
@@ -512,7 +633,13 @@ def main():
 
         print("📄 Creating Notion page in your Kanban database...")
         page_id = create_notion_page(
-            job_title, company, url, pdf_upload_id, pdf_filename, db_properties
+            job_title,
+            company,
+            url,
+            pdf_upload_id,
+            pdf_filename,
+            db_properties,
+            company_description,
         )
         print(f"✅ Done! Notion page ID: {page_id}")
 
